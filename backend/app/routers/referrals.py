@@ -1,0 +1,155 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Query
+from sqlalchemy.orm import Session
+from typing import List, Optional
+from uuid import UUID
+from datetime import datetime, timezone
+from ..database import get_db
+from ..schemas.referral import (
+    ReferralResponse, GenerateReferralResponse, ReferralStatusUpdate,
+    ReferralFacilityResponse, GovernmentSchemeResponse,
+)
+from ..models.referral import Referral, ReferralFacility, GovernmentScheme
+from ..services.referral_service import create_referral
+from ..middleware.auth_middleware import get_current_user
+from ..models.user import User
+from ..services.child_service import get_child
+import logging
+
+logger = logging.getLogger(__name__)
+router = APIRouter()
+
+
+@router.post("/generate/{child_id}", response_model=GenerateReferralResponse)
+def generate_referral(
+    child_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a referral letter and identify applicable government schemes."""
+    child = get_child(child_id, db)
+    if not child:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+
+    try:
+        result = create_referral(child_id, current_user.id, db)
+        referral = result["referral"]
+        facility = result["facility"]
+
+        return GenerateReferralResponse(
+            referral_id=referral.id,
+            facility=facility,
+            applicable_schemes=result["scheme_codes"],
+            letter_preview=result["letter_text"][:500] + "..." if len(result["letter_text"]) > 500 else result["letter_text"],
+            letter_pdf_url=f"/api/v1/referrals/{referral.id}/letter",
+            whatsapp_message=result["whatsapp_message"],
+        )
+    except Exception as e:
+        logger.error(f"Referral generation failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.get("/child/{child_id}", response_model=List[ReferralResponse])
+def get_child_referrals(
+    child_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get all referrals for a child."""
+    child = get_child(child_id, db)
+    if not child:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+
+    return (
+        db.query(Referral)
+        .filter(Referral.child_id == child_id)
+        .order_by(Referral.created_at.desc())
+        .all()
+    )
+
+
+@router.put("/{referral_id}/status", response_model=ReferralResponse)
+def update_referral_status(
+    referral_id: UUID,
+    data: ReferralStatusUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Update referral status (e.g., APPOINTMENT_SCHEDULED → ASSESSED)."""
+    referral = db.query(Referral).filter(Referral.id == referral_id).first()
+    if not referral:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Referral not found")
+
+    referral.status = data.status
+    if data.specialist_notes:
+        referral.specialist_notes = data.specialist_notes
+    if data.appointment_date:
+        referral.appointment_date = data.appointment_date
+
+    db.commit()
+    db.refresh(referral)
+    return referral
+
+
+@router.get("/{referral_id}/letter")
+def get_referral_letter(
+    referral_id: UUID,
+    format: str = Query("text", description="Response format: 'text' or 'pdf'"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get the referral letter text or PDF."""
+    referral = db.query(Referral).filter(Referral.id == referral_id).first()
+    if not referral:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Referral not found")
+
+    if format == "pdf":
+        from fastapi.responses import Response
+        from ..utils.pdf_generator import generate_referral_pdf
+        child = get_child(referral.child_id, db)
+        pdf_bytes = generate_referral_pdf(str(referral_id), child.full_name if child else "Child", referral.letter_text)
+        return Response(content=pdf_bytes, media_type="application/pdf",
+                       headers={"Content-Disposition": f'attachment; filename="referral_{referral_id}.pdf"'})
+
+    return {"letter_text": referral.letter_text, "letter_text_hi": referral.letter_text_hi}
+
+
+@router.post("/{referral_id}/notify-parent")
+def notify_parent(
+    referral_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark referral as sent to parent (mock WhatsApp notification)."""
+    referral = db.query(Referral).filter(Referral.id == referral_id).first()
+    if not referral:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Referral not found")
+
+    referral.parent_notified_at = datetime.now(timezone.utc)
+    referral.status = "SENT_TO_PARENT"
+    db.commit()
+
+    child = get_child(referral.child_id, db)
+    whatsapp_msg = (
+        f"Dear Parent/Guardian, {child.full_name if child else 'your child'} has been referred for "
+        f"a developmental assessment. Please visit your Anganwadi Worker for details and the referral letter."
+    )
+
+    return {
+        "message": "Parent notification sent successfully",
+        "whatsapp_message": whatsapp_msg,
+        "notified_at": referral.parent_notified_at,
+        "note": "In production, this would send via WhatsApp Business API",
+    }
+
+
+@router.get("/facilities", response_model=List[ReferralFacilityResponse])
+def get_referral_facilities(
+    district_id: Optional[int] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get available referral facilities."""
+    query = db.query(ReferralFacility).filter(ReferralFacility.is_active == True)
+    if district_id:
+        query = query.filter(ReferralFacility.district_id == district_id)
+    return query.all()
