@@ -1,0 +1,1166 @@
+{
+  "info": {
+    "name": "Aarambh AI — Developmental Digital Twin API",
+    "description": "India's First Developmental Digital Twin Platform for Anganwadi children (ages 3-6).\n\nThis collection covers all v1 endpoints:\n- Auth (OTP login, JWT)\n- Children (CRUD, DDT)\n- Attendance (batch mark)\n- Observations (voice, text)\n- Milestones (library, assessment)\n- PDRS (compute, history)\n- Drawings (upload, Crayon Intelligence™)\n- Referrals (generate, letter, notify)\n- Recommendations (AI activities)\n- Dashboard (AWW, CDPO, Heatmap)\n\n**Setup:**\n1. Run the Start application workflow\n2. Call POST /auth/request-otp with any phone number\n3. Copy the OTP from the response\n4. Call POST /auth/verify-otp — the access_token is auto-saved\n5. All other requests use Bearer auth automatically\n\n**Variables:** BASE_URL defaults to http://0.0.0.0:8000/api/v1",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "aarambh-ai-v1-collection"
+  },
+  "variable": [
+    {
+      "key": "BASE_URL",
+      "value": "http://0.0.0.0:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "TOKEN",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "CHILD_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "AWC_ID",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "REFERRAL_ID",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "DRAWING_ID",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{TOKEN}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "🔐 Auth",
+      "item": [
+        {
+          "name": "Request OTP",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.otp) { console.log('Dev OTP:', json.otp); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/auth/request-otp",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "auth",
+                "request-otp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Verify OTP (get token)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) { pm.collectionVariables.set('TOKEN', json.access_token); }",
+                  "if (json.user && json.user.id) { console.log('Logged in as:', json.user.name, '|', json.user.role); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phone\": \"+919876543210\",\n  \"otp\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/auth/verify-otp",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "auth",
+                "verify-otp"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Current User (/me)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/auth/me",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.access_token) { pm.collectionVariables.set('TOKEN', json.access_token); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{BASE_URL}}/auth/refresh",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "👶 Children",
+      "item": [
+        {
+          "name": "Register Child",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.id) { pm.collectionVariables.set('CHILD_ID', json.id); pm.collectionVariables.set('AWC_ID', json.awc_id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Aasha Bai\",\n  \"date_of_birth\": \"2020-06-15\",\n  \"gender\": \"FEMALE\",\n  \"awc_id\": 1,\n  \"parent_name\": \"Suman Bai\",\n  \"parent_phone\": \"+919876543211\",\n  \"parent_language\": \"hi\",\n  \"notes\": \"Registered at Sedam AWC-001\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/children/",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "children",
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "List All Children",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/children/?awc_id={{AWC_ID}}&limit=50",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "children",
+                ""
+              ],
+              "query": [
+                {
+                  "key": "awc_id",
+                  "value": "{{AWC_ID}}"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/children/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "children",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Child",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"parent_phone\": \"+919876543212\",\n  \"notes\": \"Updated at follow-up visit\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/children/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "children",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child DDT (Digital Twin)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/children/{{CHILD_ID}}/ddt",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "children",
+                "{{CHILD_ID}}",
+                "ddt"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child DDT (Force Refresh)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/children/{{CHILD_ID}}/ddt?refresh=true",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "children",
+                "{{CHILD_ID}}",
+                "ddt"
+              ],
+              "query": [
+                {
+                  "key": "refresh",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📅 Attendance",
+      "item": [
+        {
+          "name": "Mark Batch Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"date\": \"2026-05-31\",\n  \"entries\": [\n    { \"child_id\": \"{{CHILD_ID}}\", \"present\": true }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/attendance/batch",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "attendance",
+                "batch"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child Attendance History",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/attendance/child/{{CHILD_ID}}?start_date=2026-01-01",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "attendance",
+                "child",
+                "{{CHILD_ID}}"
+              ],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2026-01-01"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Attendance by Date",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/attendance/date/2026-05-31?awc_id={{AWC_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "attendance",
+                "date",
+                "2026-05-31"
+              ],
+              "query": [
+                {
+                  "key": "awc_id",
+                  "value": "{{AWC_ID}}"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎤 Observations",
+      "item": [
+        {
+          "name": "Submit Text Observation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"child_id\": \"{{CHILD_ID}}\",\n  \"raw_text\": \"Aasha is playing with other children nicely today. She speaks in full sentences and follows instructions well. However, she seems to struggle with fine motor tasks like holding the pencil correctly.\",\n  \"language\": \"en\",\n  \"observation_type\": \"TEXT\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/observations/text",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "observations",
+                "text"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Voice Observation (multipart)",
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "child_id",
+                  "value": "{{CHILD_ID}}",
+                  "type": "text"
+                },
+                {
+                  "key": "language",
+                  "value": "hi",
+                  "type": "text"
+                },
+                {
+                  "key": "audio",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/observations/voice",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "observations",
+                "voice"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child Observations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/observations/{{CHILD_ID}}?limit=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "observations",
+                "{{CHILD_ID}}"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🏆 Milestones",
+      "item": [
+        {
+          "name": "Get Milestone Library",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/milestones/library",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "milestones",
+                "library"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Library by Domain",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/milestones/library?domain_id=1",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "milestones",
+                "library"
+              ],
+              "query": [
+                {
+                  "key": "domain_id",
+                  "value": "1"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Due Milestones for Child",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/milestones/child/{{CHILD_ID}}/due",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "milestones",
+                "child",
+                "{{CHILD_ID}}",
+                "due"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Submit Milestone Assessment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"child_id\": \"{{CHILD_ID}}\",\n  \"assessments\": [\n    { \"milestone_id\": 1, \"result\": \"YES\",       \"notes\": \"Child can do this consistently\" },\n    { \"milestone_id\": 4, \"result\": \"SOMETIMES\",  \"notes\": \"Needs prompting\" },\n    { \"milestone_id\": 7, \"result\": \"NOT_YET\",    \"notes\": \"Not observed yet\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/milestones/assess",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "milestones",
+                "assess"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child Milestone Status",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/milestones/child/{{CHILD_ID}}/status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "milestones",
+                "child",
+                "{{CHILD_ID}}",
+                "status"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📊 PDRS (Risk Score)",
+      "item": [
+        {
+          "name": "Compute PDRS for Child",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{BASE_URL}}/pdrs/compute/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "pdrs",
+                "compute",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Latest PDRS Score",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/pdrs/child/{{CHILD_ID}}/latest",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "pdrs",
+                "child",
+                "{{CHILD_ID}}",
+                "latest"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get PDRS History (Trend)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/pdrs/child/{{CHILD_ID}}/history?limit=10",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "pdrs",
+                "child",
+                "{{CHILD_ID}}",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get AWC PDRS Summary",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/pdrs/awc/{{AWC_ID}}/summary",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "pdrs",
+                "awc",
+                "{{AWC_ID}}",
+                "summary"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get DDT Snapshot",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/pdrs/child/{{CHILD_ID}}/ddt",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "pdrs",
+                "child",
+                "{{CHILD_ID}}",
+                "ddt"
+              ]
+            },
+            "description": "Get (or auto-create) the Developmental Digital Twin snapshot for a child."
+          }
+        },
+        {
+          "name": "Refresh DDT Snapshot",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{BASE_URL}}/pdrs/child/{{CHILD_ID}}/ddt/refresh",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "pdrs",
+                "child",
+                "{{CHILD_ID}}",
+                "ddt",
+                "refresh"
+              ]
+            },
+            "description": "Force-create a fresh DDT snapshot for a child."
+          }
+        }
+      ]
+    },
+    {
+      "name": "🖍️ Drawings (Crayon Intelligence™)",
+      "item": [
+        {
+          "name": "Upload & Analyze Drawing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.drawing_id) { pm.collectionVariables.set('DRAWING_ID', json.drawing_id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "child_id",
+                  "value": "{{CHILD_ID}}",
+                  "type": "text"
+                },
+                {
+                  "key": "context",
+                  "value": "free_drawing",
+                  "type": "text"
+                },
+                {
+                  "key": "image",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/drawings/",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "drawings",
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child Drawings",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/drawings/child/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "drawings",
+                "child",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Drawing Analysis",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/drawings/{{DRAWING_ID}}/analysis",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "drawings",
+                "{{DRAWING_ID}}",
+                "analysis"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📋 Referrals",
+      "item": [
+        {
+          "name": "Generate Referral",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const json = pm.response.json();",
+                  "if (json.referral_id) { pm.collectionVariables.set('REFERRAL_ID', json.referral_id); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/generate/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "generate",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child Referrals",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/child/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "child",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Referral Letter (text)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/{{REFERRAL_ID}}/letter?format=text",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "{{REFERRAL_ID}}",
+                "letter"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "text"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Download Referral Letter (PDF)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/{{REFERRAL_ID}}/letter?format=pdf",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "{{REFERRAL_ID}}",
+                "letter"
+              ],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "pdf"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Referral Status",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"APPOINTMENT_SCHEDULED\",\n  \"appointment_date\": \"2026-06-15\",\n  \"specialist_notes\": \"Appointment booked at Gulbarga District Hospital RBSK Clinic\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/{{REFERRAL_ID}}/status",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "{{REFERRAL_ID}}",
+                "status"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Notify Parent (WhatsApp mock)",
+          "request": {
+            "method": "POST",
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/{{REFERRAL_ID}}/notify-parent",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "{{REFERRAL_ID}}",
+                "notify-parent"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Referral Facilities",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/referrals/facilities",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "referrals",
+                "facilities"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "🎯 Recommendations",
+      "item": [
+        {
+          "name": "Generate Activity Recommendations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"child_id\": \"{{CHILD_ID}}\",\n  \"domain_code\": \"LANGUAGE_LITERACY\",\n  \"concern\": \"Limited vocabulary and uses only single words in speech\",\n  \"language\": \"hi\"\n}"
+            },
+            "url": {
+              "raw": "{{BASE_URL}}/recommendations/generate",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "recommendations",
+                "generate"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Child Recommendations",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/recommendations/child/{{CHILD_ID}}",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "recommendations",
+                "child",
+                "{{CHILD_ID}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Recommendations by Domain",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/recommendations/child/{{CHILD_ID}}?domain_code=SOCIAL_EMOTIONAL",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "recommendations",
+                "child",
+                "{{CHILD_ID}}"
+              ],
+              "query": [
+                {
+                  "key": "domain_code",
+                  "value": "SOCIAL_EMOTIONAL"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "📈 Dashboard",
+      "item": [
+        {
+          "name": "AWW Dashboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/dashboard/aww",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "dashboard",
+                "aww"
+              ]
+            }
+          }
+        },
+        {
+          "name": "CDPO Dashboard",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/dashboard/cdpo",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "dashboard",
+                "cdpo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Overview Stats",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/dashboard/overview",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "dashboard",
+                "overview"
+              ]
+            }
+          }
+        },
+        {
+          "name": "District Heatmap",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{BASE_URL}}/dashboard/district/1/heatmap",
+              "host": [
+                "{{BASE_URL}}"
+              ],
+              "path": [
+                "dashboard",
+                "district",
+                "1",
+                "heatmap"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "❤️ Health",
+      "item": [
+        {
+          "name": "Root",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "http://0.0.0.0:8000/",
+              "protocol": "http",
+              "host": [
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "port": "8000",
+              "path": [
+                ""
+              ]
+            }
+          }
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": {
+              "raw": "http://0.0.0.0:8000/health",
+              "protocol": "http",
+              "host": [
+                "0",
+                "0",
+                "0",
+                "0"
+              ],
+              "port": "8000",
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
