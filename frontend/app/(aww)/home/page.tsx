@@ -13,6 +13,7 @@ import { formatDate, getRiskBg } from '@/lib/utils';
 import {
   Users, CheckCircle2, AlertTriangle, AlertCircle,
   ArrowRight, CalendarCheck2, Mic, Target,
+  Brain, Pencil, BookOpen, FileText,
 } from 'lucide-react';
 
 export default function AWWHomePage() {
@@ -100,6 +101,45 @@ export default function AWWHomePage() {
           </div>
         </Link>
       </div>
+
+      {/* AI-Powered Tools */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Brain className="h-4 w-4 text-brand-600" /> AI-Powered Tools
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-2 pt-0">
+          <Link href="/children">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-purple-50 border border-purple-100 hover:bg-purple-100 transition-colors active:scale-[0.98]">
+              <Mic className="h-5 w-5 text-purple-600" />
+              <span className="text-xs font-semibold text-purple-700 text-center">Voice Observe</span>
+              <span className="text-[10px] text-purple-500 text-center leading-tight">Any Indian language</span>
+            </div>
+          </Link>
+          <Link href="/children">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-blue-50 border border-blue-100 hover:bg-blue-100 transition-colors active:scale-[0.98]">
+              <Pencil className="h-5 w-5 text-blue-600" />
+              <span className="text-xs font-semibold text-blue-700 text-center">Drawing AI</span>
+              <span className="text-[10px] text-blue-500 text-center leading-tight">GPT-4 Vision analysis</span>
+            </div>
+          </Link>
+          <Link href="/children">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-green-50 border border-green-100 hover:bg-green-100 transition-colors active:scale-[0.98]">
+              <BookOpen className="h-5 w-5 text-green-600" />
+              <span className="text-xs font-semibold text-green-700 text-center">Milestones</span>
+              <span className="text-[10px] text-green-500 text-center leading-tight">WHO + NCERT tracking</span>
+            </div>
+          </Link>
+          <Link href="/children">
+            <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-amber-50 border border-amber-100 hover:bg-amber-100 transition-colors active:scale-[0.98]">
+              <FileText className="h-5 w-5 text-amber-600" />
+              <span className="text-xs font-semibold text-amber-700 text-center">AI Referral</span>
+              <span className="text-[10px] text-amber-500 text-center leading-tight">RBSK / NPPCD letters</span>
+            </div>
+          </Link>
+        </CardContent>
+      </Card>
 
       {/* Today's Priorities */}
       {today_actions.length > 0 && (

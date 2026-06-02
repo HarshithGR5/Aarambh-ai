@@ -5,10 +5,19 @@ Seeds the database with:
 3. Government schemes (RBSK, NPPCD, Divyangjan)
 4. Referral facilities (demo data)
 5. Demo geography (Karnataka — Gulbarga district)
+6. Demo users with correct roles for development/testing
 """
 import logging
 
 logger = logging.getLogger(__name__)
+
+DEMO_USERS = [
+    {"phone": "9876543001", "name": "Priya Devi",       "role": "AWW",           "language": "kn"},
+    {"phone": "9876543002", "name": "Rajesh Kumar",     "role": "CDPO",          "language": "hi"},
+    {"phone": "9876543003", "name": "Dr. Anita Singh",  "role": "HEALTH_WORKER", "language": "hi"},
+    {"phone": "9876543004", "name": "Kavya Reddy",      "role": "STATE_OFFICER", "language": "en"},
+    {"phone": "9876543005", "name": "Admin User",       "role": "ADMIN",         "language": "en"},
+]
 
 DEVELOPMENTAL_DOMAINS = [
     {"code": "PHYSICAL_MOTOR",     "name": "Physical & Motor",         "name_hi": "शारीरिक एवं मोटर",                    "display_order": 1, "color_hex": "#FF6B6B"},
@@ -174,6 +183,7 @@ def seed_all():
         _seed_schemes(db)
         _seed_demo_geography(db)
         _seed_referral_facilities(db)
+        _seed_demo_users(db)
         db.commit()
         print("✅ Seed data loaded successfully")
     except Exception as e:
@@ -277,6 +287,47 @@ def _seed_demo_geography(db):
             db.add(awc)
     db.flush()
     logger.info("Demo geography seeded")
+
+
+def _seed_demo_users(db):
+    from app.models.user import User, UserRole
+    from app.models.geography import AnganwadiCenter
+    for u in DEMO_USERS:
+        user = db.query(User).filter(User.phone == u["phone"]).first()
+        try:
+            target_role = UserRole(u["role"])
+        except ValueError:
+            logger.warning(f"Unknown role {u['role']} for demo user {u['phone']}")
+            continue
+        if user:
+            if user.role != target_role:
+                user.role = target_role
+                user.name = u["name"]
+                logger.info(f"Updated demo user {u['phone']} role → {u['role']}")
+        else:
+            user = User(
+                phone=u["phone"],
+                name=u["name"],
+                role=target_role,
+                language=u.get("language", "hi"),
+                is_active=True,
+            )
+            db.add(user)
+            db.flush()
+            logger.info(f"Created demo user {u['phone']} ({u['role']})")
+
+        if target_role == UserRole.AWW and not user.awc_id:
+            awc = db.query(AnganwadiCenter).filter(
+                AnganwadiCenter.center_number == "AWC-KA-GUL-001"
+            ).first()
+            if not awc:
+                awc = db.query(AnganwadiCenter).first()
+            if awc:
+                user.awc_id = awc.id
+                logger.info(f"Assigned AWC {awc.center_number} to AWW {u['phone']}")
+
+    db.flush()
+    logger.info("Demo users seeded")
 
 
 def _seed_referral_facilities(db):

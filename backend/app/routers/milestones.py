@@ -180,6 +180,66 @@ def submit_milestone_assessment(
     return saved
 
 
+@router.post("/child/{child_id}/assess", status_code=status.HTTP_201_CREATED)
+def assess_child_milestones(
+    child_id: UUID,
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Assess milestones for a child. Body: {assessments: [{milestone_id, result, notes?}]}"""
+    child = get_child(child_id, db)
+    if not child:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+
+    assessments = data.get("assessments", [])
+    today = date.today()
+    saved = []
+    for item in assessments:
+        milestone_id = item.get("milestone_id")
+        result = item.get("result", "NOT_YET")
+        notes = item.get("notes", "")
+        if not milestone_id:
+            continue
+
+        existing = db.query(MilestoneAssessment).filter(
+            MilestoneAssessment.child_id == child_id,
+            MilestoneAssessment.milestone_id == milestone_id,
+            MilestoneAssessment.assessment_date == today,
+        ).first()
+
+        if existing:
+            existing.result = result
+            existing.notes = notes
+            existing.assessed_by = current_user.id
+            saved.append(existing)
+        else:
+            milestone = db.query(MilestoneLibrary).filter(MilestoneLibrary.id == milestone_id).first()
+            if not milestone:
+                continue
+            assessment = MilestoneAssessment(
+                child_id=child_id,
+                milestone_id=milestone_id,
+                result=result,
+                assessed_by=current_user.id,
+                assessment_date=today,
+                notes=notes,
+            )
+            db.add(assessment)
+            saved.append(assessment)
+
+    db.commit()
+
+    try:
+        from ..services.pdrs_service import compute_pdrs, save_pdrs_score
+        pdrs_result = compute_pdrs(child_id, db)
+        save_pdrs_score(child_id, pdrs_result, db)
+    except Exception as e:
+        logger.warning(f"PDRS recompute after milestone assessment failed: {e}")
+
+    return {"saved": len(saved), "child_id": str(child_id)}
+
+
 @router.get("/child/{child_id}/status", response_model=List[ChildMilestoneStatus])
 def get_child_milestone_status(
     child_id: UUID,

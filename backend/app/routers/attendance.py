@@ -24,6 +24,16 @@ class BatchAttendanceRequest(BaseModel):
     entries: List[AttendanceEntry]
 
 
+class BulkAttendanceEntry(BaseModel):
+    child_id: UUID
+    present: bool
+    date: Optional[date] = None
+
+
+class BulkAttendanceRequest(BaseModel):
+    entries: List[BulkAttendanceEntry]
+
+
 class AttendanceResponse(BaseModel):
     id: int
     child_id: UUID
@@ -33,6 +43,57 @@ class AttendanceResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+@router.get("/today", response_model=List[AttendanceResponse])
+def get_today_attendance(
+    awc_id: Optional[int] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get attendance records for today filtered by AWC."""
+    from ..models.child import Child
+    today = date.today()
+    query = (
+        db.query(Attendance)
+        .join(Child, Attendance.child_id == Child.id)
+        .filter(Attendance.date == today)
+    )
+    effective_awc = awc_id or current_user.awc_id
+    if effective_awc:
+        query = query.filter(Child.awc_id == effective_awc)
+    return query.all()
+
+
+@router.post("/bulk", response_model=dict)
+def mark_attendance_bulk(
+    data: BulkAttendanceRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Mark attendance for multiple children. date defaults to today if not provided."""
+    today = date.today()
+    saved = 0
+    for entry in data.entries:
+        att_date = entry.date or today
+        existing = db.query(Attendance).filter(
+            Attendance.child_id == entry.child_id,
+            Attendance.date == att_date,
+        ).first()
+        if existing:
+            existing.present = entry.present
+            existing.marked_by = current_user.id
+        else:
+            record = Attendance(
+                child_id=entry.child_id,
+                date=att_date,
+                present=entry.present,
+                marked_by=current_user.id,
+            )
+            db.add(record)
+        saved += 1
+    db.commit()
+    return {"message": f"Attendance saved for {saved} children on {today}", "count": saved}
 
 
 @router.post("/batch", response_model=dict)

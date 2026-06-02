@@ -16,22 +16,28 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post("", response_model=DrawingUploadResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=DrawingUploadResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/upload", response_model=DrawingUploadResponse, status_code=status.HTTP_201_CREATED)
 async def upload_drawing(
     child_id: UUID = Form(...),
     context: str = Form("free_drawing"),
-    image: UploadFile = File(...),
+    image: UploadFile = File(None),
+    file: UploadFile = File(None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """Upload a child's drawing and analyze it with Crayon Intelligence™ AI."""
+    upload = image or file
+    if not upload:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="No file uploaded (use field name 'image' or 'file')")
     child = get_child(child_id, db)
     if not child:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
 
-    image_bytes = await image.read()
+    image_bytes = await upload.read()
     os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-    filename = f"drawing_{child_id}_{image.filename}"
+    filename = f"drawing_{child_id}_{upload.filename}"
     filepath = os.path.join(settings.UPLOAD_DIR, filename)
     with open(filepath, "wb") as f:
         f.write(image_bytes)

@@ -13,8 +13,12 @@ from app.routers import (
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s — %(name)s — %(levelname)s — %(message)s",
+    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
 )
+# Silence SQLAlchemy's engine logger (SQL queries) — set to WARNING in production.
+# Duplicate logs were caused by echo=True in database.py + root logger both firing.
+logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING)
+logging.getLogger("sqlalchemy.pool").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
 # Create all tables on startup (use Alembic in production)
@@ -29,6 +33,7 @@ app = FastAPI(
     version="1.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    redirect_slashes=False,
     contact={
         "name": "Aarambh AI Team",
         "url": "https://aarambh.ai",

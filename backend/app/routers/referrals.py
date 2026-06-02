@@ -19,6 +19,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("", response_model=List[ReferralResponse])
+@router.get("/", response_model=List[ReferralResponse])
+def list_referrals(
+    child_id: Optional[UUID] = Query(None),
+    status: Optional[str] = Query(None),
+    limit: int = Query(100, le=500),
+    offset: int = Query(0, ge=0),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """List referrals. AWW sees their AWC's children; HEALTH_WORKER/CDPO/ADMIN see all."""
+    from ..models.user import UserRole
+    query = db.query(Referral)
+
+    if child_id:
+        query = query.filter(Referral.child_id == child_id)
+
+    if status and status not in ("ALL", ""):
+        query = query.filter(Referral.status == status)
+
+    if current_user.role == UserRole.AWW and current_user.awc_id:
+        from ..models.child import Child
+        awc_child_ids = db.query(Child.id).filter(Child.awc_id == current_user.awc_id).subquery()
+        query = query.filter(Referral.child_id.in_(awc_child_ids))
+
+    return query.order_by(Referral.created_at.desc()).offset(offset).limit(limit).all()
+
+
 @router.post("/generate/{child_id}", response_model=GenerateReferralResponse)
 def generate_referral(
     child_id: UUID,
@@ -140,6 +168,25 @@ def notify_parent(
         "notified_at": referral.parent_notified_at,
         "note": "In production, this would send via WhatsApp Business API",
     }
+
+
+@router.get("/schemes/{child_id}", response_model=List[GovernmentSchemeResponse])
+def get_schemes_for_child(
+    child_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all active government schemes applicable to Anganwadi children."""
+    return db.query(GovernmentScheme).all()
+
+
+@router.get("/schemes", response_model=List[GovernmentSchemeResponse])
+def get_all_schemes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return all active government schemes."""
+    return db.query(GovernmentScheme).all()
 
 
 @router.get("/facilities", response_model=List[ReferralFacilityResponse])

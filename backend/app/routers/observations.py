@@ -188,6 +188,28 @@ async def submit_voice_observation(
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
+@router.get("", response_model=List[ObservationResponse])
+@router.get("/", response_model=List[ObservationResponse])
+def list_observations(
+    child_id: Optional[UUID] = Query(None),
+    limit: int = Query(20, le=100),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get observations, optionally filtered by child_id query param."""
+    query = db.query(Observation)
+    if child_id:
+        child = get_child(child_id, db)
+        if not child:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+        query = query.filter(Observation.child_id == child_id)
+    elif current_user.awc_id:
+        from ..models.child import Child
+        awc_child_ids = db.query(Child.id).filter(Child.awc_id == current_user.awc_id).subquery()
+        query = query.filter(Observation.child_id.in_(awc_child_ids))
+    return query.order_by(Observation.created_at.desc()).limit(limit).all()
+
+
 @router.get("/{child_id}", response_model=List[ObservationResponse])
 def get_child_observations(
     child_id: UUID,
@@ -195,7 +217,7 @@ def get_child_observations(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get all observations for a child."""
+    """Get all observations for a child (path-param variant)."""
     child = get_child(child_id, db)
     if not child:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")

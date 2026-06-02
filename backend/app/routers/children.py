@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.post("", response_model=ChildWithAgeResponse, status_code=status.HTTP_201_CREATED)
 @router.post("/", response_model=ChildWithAgeResponse, status_code=status.HTTP_201_CREATED)
 def create_child_endpoint(
     data: ChildCreate,
@@ -34,6 +35,7 @@ def create_child_endpoint(
     return result
 
 
+@router.get("", response_model=List[ChildWithAgeResponse])
 @router.get("/", response_model=List[ChildWithAgeResponse])
 def list_children(
     awc_id: Optional[int] = Query(None, description="Filter by AWC ID"),
@@ -92,20 +94,20 @@ def update_child_endpoint(
     return enrich_child_with_age(child)
 
 
-@router.get("/{child_id}/ddt", response_model=DDTSnapshotResponse)
+@router.get("/{child_id}/ddt")
 def get_child_ddt(
     child_id: UUID,
     refresh: bool = Query(False, description="Force regenerate DDT snapshot"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get the Developmental Digital Twin snapshot for a child."""
+    """Get the Developmental Digital Twin snapshot for a child.
+    Returns {child, ddt, pdrs, recent_observations} as expected by the frontend."""
     child = get_child(child_id, db)
     if not child:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
 
-    ddt = None if refresh else get_latest_ddt(child_id, db)
-    if not ddt:
-        ddt = create_ddt_snapshot(child_id, db)
+    if refresh:
+        create_ddt_snapshot(child_id, db)
 
-    return ddt
+    return get_child_ddt_data(child_id, db)

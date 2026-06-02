@@ -57,11 +57,11 @@ export const authApi = {
 /* ─── CHILDREN ──────────────────────────────── */
 export const childrenApi = {
   list: (awcId?: number, limit = 100, offset = 0) =>
-    api.get<Child[]>('/children', { params: { awc_id: awcId, limit, offset } }),
+    api.get<Child[]>('/children/', { params: { awc_id: awcId, limit, offset } }),
 
   get: (id: string) => api.get<Child>(`/children/${id}`),
 
-  create: (data: ChildCreate) => api.post<Child>('/children', data),
+  create: (data: ChildCreate) => api.post<Child>('/children/', data),
 
   update: (id: string, data: Partial<ChildCreate>) =>
     api.patch<Child>(`/children/${id}`, data),
@@ -158,12 +158,12 @@ import type { DrawingAnalysis } from './types';
 /* ─── REFERRALS ──────────────────────────────── */
 export const referralsApi = {
   list: (childId?: string) =>
-    api.get<Referral[]>('/referrals', { params: { child_id: childId } }),
+    api.get<Referral[]>('/referrals/', { params: { child_id: childId } }),
 
   create: (data: {
     child_id: string; primary_concern: string;
     domains_of_concern: string[]; facility_id?: number;
-  }) => api.post<Referral>('/referrals', data),
+  }) => api.post<Referral>('/referrals/', data),
 
   updateStatus: (id: string, status: string, notes?: string) =>
     api.patch<Referral>(`/referrals/${id}/status`, { status, outcome_notes: notes }),
