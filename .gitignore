@@ -43,3 +43,5 @@ coverage.xml
 
 # ── Distribution / packaging ─────────────────
 *.spec
+
+frontend/.env
