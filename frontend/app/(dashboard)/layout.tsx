@@ -12,7 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingSpinner } from '@/components/shared/LoadingSpinner';
 import {
   Brain, LayoutDashboard, Map, FileText, BarChart3,
-  LogOut, Building2, Menu, X, Bell, ChevronRight,
+  LogOut, Building2, Menu, X, Bell, ChevronRight, Users,
 } from 'lucide-react';
 
 const ROLE_LABELS: Record<string, { label: string; color: string }> = {
@@ -24,6 +24,7 @@ const ROLE_LABELS: Record<string, { label: string; color: string }> = {
 
 const navItems = [
   { href: '/overview',  label: 'Overview',    icon: LayoutDashboard, roles: ['CDPO', 'ADMIN'] },
+  { href: '/children',  label: 'Children',    icon: Users,           roles: ['CDPO', 'ADMIN'] },
   { href: '/district',  label: 'Heatmap',     icon: Map,             roles: ['CDPO', 'STATE_OFFICER', 'ADMIN'] },
   { href: '/awcs',      label: 'AWC Centers', icon: Building2,       roles: ['CDPO', 'ADMIN'] },
   { href: '/referrals', label: 'Referrals',   icon: FileText,        roles: ['CDPO', 'HEALTH_WORKER', 'ADMIN'] },

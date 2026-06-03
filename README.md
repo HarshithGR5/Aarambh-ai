@@ -2,9 +2,9 @@
 
 > AI-powered child development tracking for India's 1.36 million Anganwadi workers, CDPO officers, health workers, and state administrators.
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue?logo=typescript)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19-61DAFB?logo=react)](https://react.dev/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=nextdotjs)](https://nextjs.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
+[![Python](https://img.shields.io/badge/Python-3.11-blue?logo=python)](https://www.python.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791?logo=postgresql)](https://www.postgresql.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
@@ -49,24 +49,24 @@ Aarambh AI solves this with:
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                        Clients                               │
-│   AWW Mobile (React)  ·  CDPO Dashboard  ·  State Officer   │
+│   AWW Mobile (Next.js)  ·  CDPO Dashboard  ·  State Officer │
 └────────────────┬────────────────────────────────────────────┘
                  │  HTTP / REST
 ┌────────────────▼────────────────────────────────────────────┐
-│              Vite + React Frontend (port $PORT)              │
-│   Wouter routing  ·  TanStack Query  ·  Zustand store        │
-│   /api  →  proxy  →  Express API Server (port 5000)          │
+│          Next.js 15 Frontend — App Router (port 5000)        │
+│   TanStack Query  ·  Zustand  ·  Tailwind CSS  ·  shadcn/ui │
+│   /api  →  Next.js rewrite  →  FastAPI (port 8000)           │
 └────────────────┬────────────────────────────────────────────┘
                  │
 ┌────────────────▼────────────────────────────────────────────┐
-│              Express 5 API Server (TypeScript)               │
-│   JWT auth middleware  ·  Drizzle ORM  ·  Zod validation     │
+│              FastAPI (Python) — REST API (port 8000)         │
+│   JWT auth middleware  ·  SQLAlchemy ORM  ·  Pydantic v2     │
 │   /api/v1/auth  ·  /api/v1/children  ·  /api/v1/dashboard   │
 └──────┬─────────────────────┬───────────────────────────────┘
        │                     │
 ┌──────▼──────┐    ┌─────────▼──────────────────────────────┐
 │ PostgreSQL  │    │          OpenAI API                      │
-│ (Drizzle)   │    │  GPT-4o · Whisper · Vision              │
+│ (SQLAlchemy)│    │  GPT-4o · Whisper · Vision              │
 └─────────────┘    └─────────────────────────────────────────┘
 ```
 
@@ -86,14 +86,14 @@ Aarambh AI solves this with:
 
 | Layer | Technology |
 |---|---|
-| **Frontend** | React 19, Vite 6, Tailwind CSS v4, Wouter, TanStack Query v5, Zustand v5 |
-| **API Server** | Express 5, TypeScript, Drizzle ORM, Zod v4 |
+| **Frontend** | Next.js 15 (App Router), TypeScript, Tailwind CSS v3, shadcn/ui, TanStack Query v5, Zustand v5 |
+| **Backend** | Python FastAPI 0.115, SQLAlchemy ORM, Pydantic v2, Alembic migrations |
 | **Database** | PostgreSQL 16 |
 | **Auth** | Phone + OTP, JWT (cookie + Zustand persist) |
 | **AI** | OpenAI GPT-4o (text + vision), Whisper (voice transcription) |
-| **Validation** | Zod v4, drizzle-zod |
-| **Package Manager** | pnpm workspaces (monorepo) |
-| **Language** | TypeScript 5.9 throughout |
+| **Proxy** | Next.js rewrite: `/api/:path*` → `localhost:8000/api/:path*` |
+| **API Docs** | FastAPI Swagger UI at `/api/v1/docs` (via proxy) |
+| **Language** | TypeScript (frontend) · Python 3.11 (backend) |
 | **Fonts** | Inter, Plus Jakarta Sans |
 
 ---
@@ -101,46 +101,49 @@ Aarambh AI solves this with:
 ## Monorepo Structure
 
 ```
-/
-├── artifacts/
-│   ├── aarambh-ai/               # Vite + React frontend
-│   │   └── src/
-│   │       ├── components/
-│   │       │   ├── aww/          # AWW worker mobile components
-│   │       │   ├── dashboard/    # CDPO / admin dashboard widgets
-│   │       │   ├── ddt/          # Developmental Digital Twin visuals
-│   │       │   ├── layouts/      # AWWLayout, DashboardLayout
-│   │       │   ├── shared/       # EmptyState, LoadingSpinner, etc.
-│   │       │   └── ui/           # shadcn/ui primitives
-│   │       ├── lib/
-│   │       │   ├── api.ts        # Axios API clients per domain
-│   │       │   ├── store.ts      # Zustand stores (auth, UI)
-│   │       │   ├── types.ts      # All TypeScript interfaces
-│   │       │   └── utils.ts      # formatAge, getRiskBg, DOMAIN_META
-│   │       ├── pages/
-│   │       │   ├── Landing.tsx
-│   │       │   ├── Login.tsx
-│   │       │   ├── aww/          # Home, Children, ChildDetail, Observe, etc.
-│   │       │   └── dashboard/    # Overview, AWCs, District, Referrals, Reports
-│   │       ├── App.tsx           # Role-based routing
-│   │       └── index.css         # Tailwind v4 theme (brand colors, CSS vars)
-│   │
-│   └── api-server/               # Express 5 REST API
-│       └── src/
-│           ├── routes/           # auth, children, observations, referrals, dashboard
-│           ├── middleware/       # JWT auth, role guards
-│           ├── db/               # Drizzle schema + connection
-│           └── index.ts          # Server entry
+.migration-backup/
+├── frontend/                     # Next.js 15 frontend (App Router)
+│   ├── app/
+│   │   ├── (auth)/               # Login page
+│   │   ├── (aww)/                # AWW worker pages (home, children, attendance)
+│   │   │   └── children/[id]/    # Child profile, milestones, observe, drawing, referral
+│   │   ├── (dashboard)/          # CDPO dashboard (overview, awcs, referrals, reports)
+│   │   ├── layout.tsx            # Root layout with providers
+│   │   └── page.tsx              # Landing page
+│   ├── components/
+│   │   ├── aww/                  # AWW mobile UI (MilestoneCheck, DrawingUpload, etc.)
+│   │   ├── dashboard/            # CDPO sidebar + dashboard widgets
+│   │   ├── ddt/                  # DDT/PDRS visualisations (RadarChart, Gauge, DomainBar)
+│   │   ├── shared/               # PageHeader, LoadingSpinner, RiskBadge
+│   │   └── ui/                   # shadcn/ui primitives (Button, Badge, Card, etc.)
+│   ├── lib/
+│   │   ├── api.ts                # Axios API client — source of truth for API contract
+│   │   ├── store.ts              # Zustand auth store
+│   │   ├── types.ts              # TypeScript interfaces
+│   │   └── utils.ts              # formatAge, formatDate, getRiskBg, DOMAIN_META
+│   └── next.config.js            # Proxy: /api/:path* → localhost:8000/api/:path*
 │
-├── packages/
-│   └── db/                       # Shared Drizzle schema package
-│       └── src/schema.ts
-│
-├── .migration-backup/
-│   ├── frontend/                 # Original Next.js 14 frontend (reference)
-│   └── backend/                  # Original FastAPI (Python) backend (reference)
-│
-└── package.json                  # pnpm workspace root
+└── backend/                      # FastAPI (Python) backend
+    ├── main.py                   # App setup, CORS, router registration, seed data
+    ├── app/
+    │   ├── routers/              # API route handlers (one file per domain)
+    │   │   ├── auth.py           # Phone + OTP, JWT
+    │   │   ├── children.py       # CRUD + GET /{id}/ddt (full profile)
+    │   │   ├── attendance.py     # GET /today, POST /bulk
+    │   │   ├── observations.py   # GET ?child_id=, POST /text, POST /voice
+    │   │   ├── milestones.py     # GET /library, GET /child/{id}/due, POST /child/{id}/assess
+    │   │   ├── pdrs.py           # PDRS compute + history
+    │   │   ├── drawings.py       # GET ?child_id=, POST /upload, POST /{id}/analyze
+    │   │   ├── referrals.py      # Referral letters + GET /schemes/{child_id}
+    │   │   ├── recommendations.py# GET ?child_id=, POST /generate/{id}
+    │   │   └── dashboard.py      # AWW + CDPO dashboard aggregates
+    │   ├── models/               # SQLAlchemy ORM models
+    │   ├── schemas/              # Pydantic request/response schemas
+    │   ├── services/             # Business logic (child_service, pdrs_service, ddt_service)
+    │   ├── ai/                   # AI modules (transcription, observation_nlp, drawing_analysis)
+    │   └── middleware/           # JWT auth middleware
+    ├── migrations/               # Alembic migrations
+    └── requirements.txt
 ```
 
 ---

@@ -35,7 +35,7 @@ export default function DrawingPage() {
     onSuccess: (res) => {
       qc.invalidateQueries({ queryKey: ['drawings', id] });
       toast.success('Drawing uploaded! Analysing with AI…');
-      analyzeMutation.mutate(res.data.id);
+      analyzeMutation.mutate(res.data.drawing_id);
     },
     onError: () => toast.error('Failed to upload drawing.'),
   });

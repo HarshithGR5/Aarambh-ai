@@ -1,8 +1,10 @@
 import logging
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from app.config import settings
 from app.database import engine, Base
 from app.routers import (
@@ -31,8 +33,9 @@ app = FastAPI(
     title="Aarambh AI API",
     description="India's First Developmental Digital Twin Platform for Early Childhood Development",
     version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json",
     redirect_slashes=False,
     contact={
         "name": "Aarambh AI Team",
@@ -42,6 +45,22 @@ app = FastAPI(
         "name": "MIT",
     },
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    body_preview = None
+    try:
+        body_preview = str(exc.body)[:800] if exc.body else None
+    except Exception:
+        pass
+    logger.error(
+        f"422 Validation Error — {request.method} {request.url}\n"
+        f"  Errors: {errors}\n"
+        f"  Body preview: {body_preview}"
+    )
+    return JSONResponse(status_code=422, content={"detail": errors})
+
 
 # CORS Middleware
 app.add_middleware(

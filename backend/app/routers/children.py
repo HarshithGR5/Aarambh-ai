@@ -107,7 +107,84 @@ def get_child_ddt(
     if not child:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
 
-    if refresh:
-        create_ddt_snapshot(child_id, db)
+    # Enrich child with computed age fields (returns dict with full_name, age_months, etc.)
+    child_data = enrich_child_with_age(child)
 
-    return get_child_ddt_data(child_id, db)
+    # Get or regenerate DDT snapshot
+    if refresh:
+        ddt = create_ddt_snapshot(child_id, db)
+    else:
+        ddt = get_latest_ddt(child_id, db)
+
+    # Serialize DDT snapshot
+    ddt_data = None
+    if ddt:
+        ddt_data = {
+            "id": str(ddt.id),
+            "child_id": str(ddt.child_id),
+            "portrait_text": ddt.portrait_text,
+            "asd_flag": ddt.asd_flag,
+            "speech_delay_flag": ddt.speech_delay_flag,
+            "motor_delay_flag": ddt.motor_delay_flag,
+            "school_readiness_flag": ddt.school_readiness_flag,
+            "school_readiness_note": ddt.school_readiness_note,
+            "snapshot_data": ddt.snapshot_data,
+            "created_at": ddt.created_at.isoformat() if ddt.created_at else None,
+        }
+
+    # Get latest PDRS score and backfill into child_data
+    pdrs = get_latest_pdrs(child_id, db)
+    if pdrs:
+        child_data["latest_pdrs_score"] = pdrs.overall_score
+        child_data["latest_risk_level"] = pdrs.risk_level.value if pdrs.risk_level else None
+
+    pdrs_data = None
+    if pdrs:
+        pdrs_data = {
+            "id": str(pdrs.id),
+            "child_id": str(pdrs.child_id),
+            "overall_score": pdrs.overall_score,
+            "risk_level": pdrs.risk_level.value if pdrs.risk_level else None,
+            "domain_scores": pdrs.domain_scores or {},
+            "computed_at": pdrs.computed_at.isoformat() if pdrs.computed_at else None,
+        }
+
+    # Get recent observations with markers
+    from ..models.observation import Observation, ObservationMarker
+    recent_obs = (
+        db.query(Observation)
+        .filter(Observation.child_id == child_id)
+        .order_by(Observation.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    observations_data = []
+    for obs in recent_obs:
+        markers = db.query(ObservationMarker).filter(ObservationMarker.observation_id == obs.id).all()
+        observations_data.append({
+            "id": str(obs.id),
+            "child_id": str(obs.child_id),
+            "observation_type": obs.observation_type.value if obs.observation_type else None,
+            "processing_status": obs.processing_status,
+            "raw_text": obs.raw_text,
+            "english_text": obs.english_text,
+            "transcript": obs.transcript,
+            "created_at": obs.created_at.isoformat() if obs.created_at else None,
+            "markers": [
+                {
+                    "id": str(m.id),
+                    "marker_type": m.marker_type.value if m.marker_type else None,
+                    "description": m.description,
+                    "severity": m.severity,
+                    "confidence": float(m.confidence) if m.confidence else None,
+                }
+                for m in markers
+            ],
+        })
+
+    return {
+        "child": child_data,
+        "ddt": ddt_data,
+        "pdrs": pdrs_data,
+        "recent_observations": observations_data,
+    }

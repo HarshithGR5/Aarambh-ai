@@ -26,8 +26,8 @@ export default function AttendancePage() {
   });
 
   const initialPresent: Record<string, boolean> = {};
-  if (todayAttendance?.attendance) {
-    todayAttendance.attendance.forEach((a: { child_id: string; present: boolean }) => {
+  if (Array.isArray(todayAttendance)) {
+    todayAttendance.forEach((a: { child_id: string; present: boolean }) => {
       initialPresent[a.child_id] = a.present;
     });
   }

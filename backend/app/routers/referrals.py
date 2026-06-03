@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from ..database import get_db
 from ..schemas.referral import (
     ReferralResponse, GenerateReferralResponse, ReferralStatusUpdate,
-    ReferralFacilityResponse, GovernmentSchemeResponse,
+    ReferralFacilityResponse, GovernmentSchemeResponse, ReferralCreateRequest,
 )
 from ..models.referral import Referral, ReferralFacility, GovernmentScheme
 from ..services.referral_service import create_referral
@@ -17,6 +17,45 @@ import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+@router.post("", status_code=201)
+@router.post("/", status_code=201)
+def create_referral_post(
+    data: ReferralCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a referral with primary concern and domains of concern.
+    Calls the referral generation service and stores primary_concern in specialist_notes."""
+    child = get_child(data.child_id, db)
+    if not child:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
+
+    try:
+        result = create_referral(data.child_id, current_user.id, db)
+        referral = result["referral"]
+
+        # Store primary_concern in specialist_notes; store domains in domains_flagged
+        referral.specialist_notes = data.primary_concern
+        if data.domains_of_concern:
+            referral.domains_flagged = data.domains_of_concern
+        db.commit()
+        db.refresh(referral)
+
+        return {
+            "id": str(referral.id),
+            "child_id": str(referral.child_id),
+            "primary_concern": data.primary_concern,
+            "domains_of_concern": data.domains_of_concern or referral.domains_flagged or [],
+            "referral_date": str(referral.referral_date),
+            "status": referral.status.value if hasattr(referral.status, "value") else str(referral.status),
+            "letter_url": f"/api/v1/referrals/{referral.id}/letter",
+            "letter_text": referral.letter_text,
+        }
+    except Exception as e:
+        logger.error(f"Referral creation failed: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.get("", response_model=List[ReferralResponse])

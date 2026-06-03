@@ -37,31 +37,34 @@ def get_milestone_library(
     return query.order_by(MilestoneLibrary.domain_id, MilestoneLibrary.age_min_months).all()
 
 
-@router.get("/child/{child_id}/due", response_model=List[ChildMilestoneStatus])
+@router.get("/child/{child_id}/due")
 def get_due_milestones(
     child_id: UUID,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get milestones that are due for the child's age."""
+    """Get milestones due for the child's age.
+    Returns flat list with milestone_id, milestone_text, domain_code, domain_name,
+    is_critical, result — matching the MilestoneAssessment frontend type."""
     child = get_child(child_id, db)
     if not child:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Child not found")
 
     age_months = get_age_months(child.date_of_birth)
-    milestones = (
-        db.query(MilestoneLibrary)
+    rows = (
+        db.query(MilestoneLibrary, DevelopmentalDomain)
+        .join(DevelopmentalDomain, MilestoneLibrary.domain_id == DevelopmentalDomain.id)
         .filter(
             MilestoneLibrary.is_active == True,
             MilestoneLibrary.age_min_months <= age_months + 3,
             MilestoneLibrary.age_max_months >= age_months - 12,
         )
-        .order_by(MilestoneLibrary.age_min_months)
+        .order_by(DevelopmentalDomain.display_order, MilestoneLibrary.age_min_months)
         .all()
     )
 
     results = []
-    for milestone in milestones:
+    for milestone, domain in rows:
         latest = (
             db.query(MilestoneAssessment)
             .filter(
@@ -75,12 +78,17 @@ def get_due_milestones(
             milestone.age_max_months <= age_months
             and (not latest or latest.result == MilestoneResult.NOT_YET)
         )
-        results.append(ChildMilestoneStatus(
-            milestone=milestone,
-            latest_result=latest.result if latest else None,
-            latest_date=latest.assessment_date if latest else None,
-            is_overdue=is_overdue,
-        ))
+        results.append({
+            "milestone_id": milestone.id,
+            "milestone_text": milestone.text,
+            "domain_code": domain.code,
+            "domain_name": domain.name,
+            "is_critical": milestone.is_critical,
+            "result": latest.result.value if latest else None,
+            "is_overdue": is_overdue,
+            "age_min_months": milestone.age_min_months,
+            "age_max_months": milestone.age_max_months,
+        })
 
     return results
 

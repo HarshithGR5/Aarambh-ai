@@ -96,8 +96,25 @@ async def analyze_drawing(image_bytes: bytes, age_months: int, context: str = "f
         temperature=0.2,
     )
 
-    result_text = response.choices[0].message.content.strip()
-    if "```" in result_text:
-        result_text = result_text.split("```json")[-1].split("```")[0].strip()
+    result_text = response.choices[0].message.content
+    if not result_text:
+        logger.warning("Drawing analysis: empty response from OpenAI, using mock")
+        return MOCK_ANALYSIS
 
-    return json.loads(result_text)
+    result_text = result_text.strip()
+
+    if "```" in result_text:
+        parts = result_text.split("```")
+        for part in parts:
+            part = part.strip()
+            if part.startswith("json"):
+                part = part[4:].strip()
+            if part.startswith("{"):
+                result_text = part
+                break
+
+    try:
+        return json.loads(result_text)
+    except json.JSONDecodeError as e:
+        logger.error(f"Drawing analysis JSON parse failed: {e!r}. Raw: {result_text[:200]!r}")
+        return MOCK_ANALYSIS
