@@ -71,6 +71,7 @@ app.add_middleware(
         "http://localhost:5000",
         "https://*.replit.app",
         "https://*.replit.dev",
+        "https://aarambh-ai-gold.vercel.app",
         "*",
     ],
     allow_credentials=True,
