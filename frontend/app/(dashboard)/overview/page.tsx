@@ -12,6 +12,7 @@ import { formatDate } from '@/lib/utils';
 import { Users, Building2, FileText, TrendingUp, AlertCircle, ArrowRight, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import type { RiskLevel } from '@/lib/types';
 
 const DEMO_OVERVIEW = { total_children: 847, total_awcs: 24, total_referrals: 38, avg_pdrs_score: 71 };
 const DEMO_CDPO = {
@@ -20,12 +21,54 @@ const DEMO_CDPO = {
   green_zone_children: 612, amber_zone_children: 178, red_zone_children: 57,
   referrals_this_month: 14, referral_completion_rate: 71, inactive_awws: 2,
 };
-const DEMO_CHILDREN = [
-  { id: 1, full_name: 'Aarav Sharma',    age_years: 3, age_months_remainder: 4, latest_risk_level: 'GREEN', latest_pdrs_score: 84 },
-  { id: 2, full_name: 'Priya Nair',      age_years: 2, age_months_remainder: 8, latest_risk_level: 'AMBER', latest_pdrs_score: 61 },
-  { id: 3, full_name: 'Rohan Patel',     age_years: 4, age_months_remainder: 1, latest_risk_level: 'GREEN', latest_pdrs_score: 79 },
-  { id: 4, full_name: 'Ananya Reddy',    age_years: 1, age_months_remainder: 11, latest_risk_level: 'RED',  latest_pdrs_score: 38 },
-  { id: 5, full_name: 'Vikram Iyer',     age_years: 5, age_months_remainder: 2, latest_risk_level: 'GREEN', latest_pdrs_score: 91 },
+const DEMO_CHILDREN: Array<{
+  id: number;
+  full_name: string;
+  age_years: number;
+  age_months_remainder: number;
+  latest_risk_level: RiskLevel;
+  latest_pdrs_score: number;
+}> = [
+  {
+    id: 1,
+    full_name: 'Aarav Sharma',
+    age_years: 3,
+    age_months_remainder: 4,
+    latest_risk_level: 'GREEN',
+    latest_pdrs_score: 84,
+  },
+  {
+    id: 2,
+    full_name: 'Priya Nair',
+    age_years: 2,
+    age_months_remainder: 8,
+    latest_risk_level: 'AMBER',
+    latest_pdrs_score: 61,
+  },
+  {
+    id: 3,
+    full_name: 'Rohan Patel',
+    age_years: 4,
+    age_months_remainder: 1,
+    latest_risk_level: 'GREEN',
+    latest_pdrs_score: 79,
+  },
+  {
+    id: 4,
+    full_name: 'Ananya Reddy',
+    age_years: 1,
+    age_months_remainder: 11,
+    latest_risk_level: 'RED',
+    latest_pdrs_score: 38,
+  },
+  {
+    id: 5,
+    full_name: 'Vikram Iyer',
+    age_years: 5,
+    age_months_remainder: 2,
+    latest_risk_level: 'GREEN',
+    latest_pdrs_score: 91,
+  },
 ];
 const DEMO_REFERRALS = [
   { id: 1, child_name: 'Ananya Reddy',   primary_concern: 'Motor delay', referral_date: '2025-05-20', status: 'PENDING' },
@@ -123,7 +166,10 @@ export default function OverviewPage() {
                     <p className="text-sm font-semibold">{child.full_name}</p>
                     <p className="text-xs text-muted-foreground">{child.age_years}y {child.age_months_remainder}m</p>
                   </div>
-                  <RiskBadge level={child.latest_risk_level} score={child.latest_pdrs_score} />
+                  <RiskBadge
+                    level={child.latest_risk_level as RiskLevel}
+                    score={child.latest_pdrs_score}
+                  />
                 </div>
               </Link>
             ))}
